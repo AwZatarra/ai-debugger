@@ -1,0 +1,25 @@
+{
+  "name": "service-b",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx --import ./src/instrumentation.ts ./src/index.ts"
+  },
+  "dependencies": {
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/auto-instrumentations-node": "^0.72.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.214.0",
+    "@opentelemetry/sdk-node": "^0.214.0",
+    "axios": "^1.14.0",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "pino": "^10.3.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.5.0",
+    "ts-node-dev": "^2.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
+  }
+}
