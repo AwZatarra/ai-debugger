@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: ai-debugger-clickhouse
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    environment:
+      CLICKHOUSE_DB: observability
+      CLICKHOUSE_USER: aiuser
+      CLICKHOUSE_PASSWORD: aipass123
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./db/clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: ai-debugger-otel-collector
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    volumes:
+      - ./collector/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
+
+volumes:
+  clickhouse_data:
