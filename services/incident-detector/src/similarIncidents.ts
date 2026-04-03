@@ -1,4 +1,9 @@
 import { clickhouse } from "./clickhouse";
+import {
+  upsertIncidentEmbedding,
+  getLatestIncidentEmbedding,
+  cosineSimilarity,
+} from "./embeddings";
 
 type IncidentRow = {
   incident_id: string;
@@ -14,6 +19,14 @@ type IncidentRow = {
   evidence_json: string;
 };
 
+type IncidentEmbeddingRow = {
+  incident_id: string;
+  created_at: string;
+  source_text: string;
+  embedding: number[];
+  embedding_model: string;
+};
+
 type SimilarIncidentResult = {
   incident_id: string;
   created_at: string;
@@ -25,6 +38,8 @@ type SimilarIncidentResult = {
   error_type: string;
   error_message: string;
   similarity_reason: string;
+  heuristic_score: number;
+  semantic_score: number;
   similarity_score: number;
 };
 
@@ -94,7 +109,38 @@ async function getCandidateIncidents(currentIncidentId: string): Promise<Inciden
   return await resultSet.json<IncidentRow>();
 }
 
-function computeSimilarity(current: IncidentRow, candidate: IncidentRow): SimilarIncidentResult | null {
+async function getLatestIncidentEmbeddingsMap(): Promise<Map<string, IncidentEmbeddingRow>> {
+  const resultSet = await clickhouse.query({
+    query: `
+      SELECT
+        incident_id,
+        created_at,
+        source_text,
+        embedding,
+        embedding_model
+      FROM observability.incident_embeddings
+      ORDER BY created_at DESC
+      LIMIT 5000
+    `,
+    format: "JSONEachRow",
+  });
+
+  const rows = await resultSet.json<IncidentEmbeddingRow>();
+  const map = new Map<string, IncidentEmbeddingRow>();
+
+  for (const row of rows) {
+    if (!map.has(row.incident_id)) {
+      map.set(row.incident_id, row);
+    }
+  }
+
+  return map;
+}
+
+function computeHeuristicSimilarity(
+  current: IncidentRow,
+  candidate: IncidentRow
+): { score: number; reasons: string[] } {
   const currentEvidence = safeParseJson(current.evidence_json);
   const candidateEvidence = safeParseJson(candidate.evidence_json);
 
@@ -106,7 +152,11 @@ function computeSimilarity(current: IncidentRow, candidate: IncidentRow): Simila
     reasons.push("same fingerprint");
   }
 
-  if (current.primary_service && candidate.primary_service && current.primary_service === candidate.primary_service) {
+  if (
+    current.primary_service &&
+    candidate.primary_service &&
+    current.primary_service === candidate.primary_service
+  ) {
     score += 30;
     reasons.push("same primary service");
   }
@@ -148,7 +198,56 @@ function computeSimilarity(current: IncidentRow, candidate: IncidentRow): Simila
     reasons.push("same evidence service");
   }
 
-  if (score === 0) {
+  return { score, reasons };
+}
+
+function computeSemanticSimilarity(
+  currentEmbedding: number[] | null,
+  candidateEmbedding: number[] | null
+): number {
+  if (!currentEmbedding || !candidateEmbedding) {
+    return 0;
+  }
+
+  try {
+    const similarity = cosineSimilarity(currentEmbedding, candidateEmbedding);
+
+    if (!Number.isFinite(similarity)) {
+      return 0;
+    }
+
+    if (similarity <= 0) {
+      return 0;
+    }
+
+    return Math.round(similarity * 100);
+  } catch {
+    return 0;
+  }
+}
+
+function computeFinalSimilarity(
+  current: IncidentRow,
+  candidate: IncidentRow,
+  currentEmbedding: number[] | null,
+  candidateEmbedding: number[] | null
+): SimilarIncidentResult | null {
+  const heuristic = computeHeuristicSimilarity(current, candidate);
+  const semanticScore = computeSemanticSimilarity(currentEmbedding, candidateEmbedding);
+
+  const reasons = [...heuristic.reasons];
+  if (semanticScore > 0) {
+    reasons.push(`semantic similarity ${semanticScore}`);
+  }
+
+  let finalScore = heuristic.score + semanticScore;
+
+  // Penaliza coincidencias puramente semánticas para evitar ruido.
+  if (heuristic.score === 0 && semanticScore > 0) {
+    finalScore = Math.round(finalScore * 0.6);
+  }
+
+  if (finalScore === 0) {
     return null;
   }
 
@@ -163,7 +262,86 @@ function computeSimilarity(current: IncidentRow, candidate: IncidentRow): Simila
     error_type: candidate.error_type,
     error_message: candidate.error_message,
     similarity_reason: reasons.join(", "),
-    similarity_score: score,
+    heuristic_score: heuristic.score,
+    semantic_score: semanticScore,
+    similarity_score: finalScore,
+  };
+}
+
+export async function reindexIncidentEmbedding(incidentId: string) {
+  const incident = await getIncidentById(incidentId);
+  if (!incident) {
+    return null;
+  }
+
+  const embeddingRow = await upsertIncidentEmbedding(incidentId);
+
+  return {
+    incident_id: incident.incident_id,
+    title: incident.title,
+    embedded: Boolean(embeddingRow),
+    embedding_model: embeddingRow?.embedding_model || null,
+    embedded_at: embeddingRow?.created_at || null,
+  };
+}
+
+export async function reindexAllIncidentEmbeddings(limit = 100) {
+  const safeLimit = Math.max(1, Math.min(limit, 1000));
+
+  const resultSet = await clickhouse.query({
+    query: `
+      SELECT
+        incident_id,
+        created_at,
+        status,
+        fingerprint,
+        title,
+        primary_service,
+        severity,
+        trace_id,
+        error_type,
+        error_message,
+        evidence_json
+      FROM observability.incidents
+      ORDER BY created_at DESC
+      LIMIT {limit:UInt32}
+    `,
+    query_params: {
+      limit: safeLimit,
+    },
+    format: "JSONEachRow",
+  });
+
+  const incidents = await resultSet.json<IncidentRow>();
+
+  const results: Array<{
+    incident_id: string;
+    status: "indexed" | "failed";
+    error?: string;
+  }> = [];
+
+  for (const incident of incidents) {
+    try {
+      await upsertIncidentEmbedding(incident.incident_id);
+      results.push({
+        incident_id: incident.incident_id,
+        status: "indexed",
+      });
+    } catch (error: any) {
+      results.push({
+        incident_id: incident.incident_id,
+        status: "failed",
+        error: error?.message || "Unknown embedding error",
+      });
+    }
+  }
+
+  return {
+    total_requested: safeLimit,
+    total_found: incidents.length,
+    indexed_count: results.filter((r) => r.status === "indexed").length,
+    failed_count: results.filter((r) => r.status === "failed").length,
+    results,
   };
 }
 
@@ -173,12 +351,42 @@ export async function findSimilarIncidents(incidentId: string) {
     return null;
   }
 
+  let currentEmbeddingRow = await getLatestIncidentEmbedding(incidentId);
+
+  if (!currentEmbeddingRow) {
+    try {
+      await upsertIncidentEmbedding(incidentId);
+      currentEmbeddingRow = await getLatestIncidentEmbedding(incidentId);
+    } catch (error: any) {
+      console.warn(
+        `[similarIncidents] failed to build incident embedding for ${incidentId}: ${error?.message || "unknown error"}`
+      );
+    }
+  }
+
+  const currentEmbedding = currentEmbeddingRow?.embedding || null;
   const candidates = await getCandidateIncidents(incidentId);
+  const embeddingMap = await getLatestIncidentEmbeddingsMap();
 
   const similar = candidates
-    .map((candidate) => computeSimilarity(current, candidate))
+    .map((candidate) =>
+      computeFinalSimilarity(
+        current,
+        candidate,
+        currentEmbedding,
+        embeddingMap.get(candidate.incident_id)?.embedding || null
+      )
+    )
     .filter((item): item is SimilarIncidentResult => Boolean(item))
-    .sort((a, b) => b.similarity_score - a.similarity_score)
+    .sort((a, b) => {
+      if (b.similarity_score !== a.similarity_score) {
+        return b.similarity_score - a.similarity_score;
+      }
+      if (b.heuristic_score !== a.heuristic_score) {
+        return b.heuristic_score - a.heuristic_score;
+      }
+      return b.semantic_score - a.semantic_score;
+    })
     .slice(0, 20);
 
   return {
@@ -190,7 +398,13 @@ export async function findSimilarIncidents(incidentId: string) {
       trace_id: current.trace_id,
       error_type: current.error_type,
     },
-    total_candidates_scanned: candidates.length,
+    retrieval: {
+      mode: "hybrid",
+      incident_embedding_found: Boolean(currentEmbeddingRow),
+      incident_embedding_model: currentEmbeddingRow?.embedding_model || null,
+      total_candidates_scanned: candidates.length,
+      total_candidate_embeddings_loaded: embeddingMap.size,
+    },
     similar_count: similar.length,
     similar_incidents: similar,
   };
