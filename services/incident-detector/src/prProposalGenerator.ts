@@ -32,7 +32,7 @@ type ProposalResponse = {
 };
 
 const DEFAULT_REPOSITORY =
-  process.env.PR_PROPOSAL_DEFAULT_REPOSITORY || "local/ai-debugger";
+  process.env.PR_PROPOSAL_DEFAULT_REPOSITORY || "AwZatarra/ai-debugger";
 
 const DEFAULT_TARGET_BRANCH =
   process.env.PR_PROPOSAL_DEFAULT_TARGET_BRANCH || "main";
