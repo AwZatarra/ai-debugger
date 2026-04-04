@@ -93,9 +93,10 @@ app.get("/inventory", async (_req, res) => {
 
       await logInventoryDbTimeout(err, { simulatedFailure: true });
 
-      return res.status(500).json({
+      return res.status(504).json({
         ok: false,
         error: "DB_TIMEOUT",
+        message: "Inventory request timed out",
       });
     }
 
@@ -125,9 +126,10 @@ app.get("/inventory", async (_req, res) => {
     if (isDbTimeoutError(error)) {
       await logInventoryDbTimeout(error, {});
 
-      return res.status(500).json({
+      return res.status(504).json({
         ok: false,
         error: "DB_TIMEOUT",
+        message: "Inventory request timed out",
       });
     }
 
