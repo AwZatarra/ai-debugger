@@ -1,262 +1,163 @@
+# 🧠 AI Debugger
 
-# OPERATIONAL_PLAYBOOK.md
+Backend que funciona como un **debugger inteligente para incidentes de producción**.
 
-# AI Debugger — Operational Playbook
+Permite detectar incidentes, construir contexto automáticamente, analizar causa raíz con reglas y LLMs, buscar incidentes similares, recuperar conocimiento útil y llegar hasta una **propuesta de PR con aprobación humana**.  
+En el flujo ya validado, incluso puede terminar creando un **Pull Request real en GitHub** con guardrails.
 
-> Manual operativo para ejecutar, validar y depurar el pipeline completo de **AI Debugger** en local, desde generación de incidente hasta creación de Pull Request real en GitHub.
->
-> Este playbook está basado en el flujo validado en este proyecto y documenta el recorrido operativo real, los checkpoints por etapa y los problemas encontrados durante la implementación. Fue generado a partir del contexto confirmado en la conversación del proyecto. fileciteturn18file0
-
----
-
-## Tabla de contenidos
-
-- [1. Objetivo](#1-objetivo)
-- [2. Alcance del playbook](#2-alcance-del-playbook)
-- [3. Prerrequisitos](#3-prerrequisitos)
-- [4. Servicios y componentes que deben estar disponibles](#4-servicios-y-componentes-que-deben-estar-disponibles)
-- [5. Variables y configuración relevantes](#5-variables-y-configuración-relevantes)
-- [6. Flujo operacional end-to-end](#6-flujo-operacional-end-to-end)
-- [7. Checkpoints de validación por etapa](#7-checkpoints-de-validación-por-etapa)
-- [8. Happy path completo](#8-happy-path-completo)
-- [9. Troubleshooting por etapa](#9-troubleshooting-por-etapa)
-- [10. Señales de éxito del pipeline](#10-señales-de-éxito-del-pipeline)
-- [11. Comandos y requests de referencia](#11-comandos-y-requests-de-referencia)
-- [12. Notas operativas importantes](#12-notas-operativas-importantes)
+En pocas palabras: este proyecto busca que el debugging en producción sea **más rápido, más guiado y menos dependiente de revisión manual desde cero**.
 
 ---
 
-## 1. Objetivo
+## 🚀 Qué hace
 
-Este playbook existe para poder:
+El sistema recorre un flujo como este:
 
-- levantar el sistema en local sin perder el orden correcto,
-- generar un incidente reproducible,
-- recorrer el pipeline completo del AI Debugger,
-- validar cada etapa con evidencia concreta,
-- y llegar hasta un Pull Request real en GitHub.
-
----
-
-## 2. Alcance del playbook
-
-Este documento cubre el flujo validado para:
-
-- ingestión y persistencia de logs,
-- detección de incidentes,
-- construcción de contexto,
-- RCA heurístico,
-- RCA con LLM,
-- summary,
-- similar incidents,
-- knowledge retrieval,
-- cause ranking determinista,
-- cause ranking LLM,
-- feedback humano,
-- PR proposal,
-- aprobación/rechazo humano,
-- prepare-execution,
-- generate-file-edits,
-- regenerate-file-edits,
-- validate-file-edits,
-- run-local-checks,
-- create-github-pr.
-
-> No cubre merge automático del PR. Eso queda fuera del flujo validado actual.
+- ingiere logs y errores de servicios
+- detecta incidentes automáticamente
+- construye contexto técnico del incidente
+- ejecuta RCA heurístico
+- ejecuta RCA con LLM
+- busca incidentes similares
+- recupera conocimiento y runbooks relacionados
+- rankea causas probables
+- permite feedback humano
+- genera una PR proposal
+- exige aprobación humana antes de continuar
+- valida edits y checks locales
+- puede abrir un **PR real en GitHub**
 
 ---
 
-## 3. Prerrequisitos
+## ✨ Diferencial técnico
 
-### Software base
-
-- Node.js + npm
-- Docker Desktop o Docker Engine operativo
-- Git
-- Acceso a ClickHouse local vía contenedor
-- Acceso a GitHub con token válido para el repositorio objetivo
-- Sistema operativo validado en esta implementación: Windows con Git Bash / PowerShell
-
-### Capacidades necesarias
-
-- poder correr servicios Node/TypeScript por separado,
-- poder ejecutar requests HTTP (curl, Postman o navegador),
-- poder reiniciar servicios después de cambios de `.env` o código.
+- mezcla **reglas deterministas + LLM**
+- incorpora **human-in-the-loop**
+- usa **guardrails** antes de tocar GitHub
+- separa claramente:
+  - análisis
+  - proposal
+  - validación
+  - ejecución
+- deja trazabilidad del pipeline completo
 
 ---
 
-## 4. Servicios y componentes que deben estar disponibles
+## 🛠️ Tecnologías
 
-### Backend y servicios
-
-- `service-a`
-- `service-b`
-- `incident-detector`
-- `log-ingestor`
-- ClickHouse
-- OpenTelemetry Collector
-
-### UI mínima
-
-- frontend en `http://localhost:3000`
-
-### Puertos confirmados en el flujo
-
-- frontend: `http://localhost:3000`
-- `service-a`: `http://localhost:3001`
-- `service-b`: `http://localhost:3002`
-- backend / incident-detector: `http://localhost:3020`
+- **Node.js**
+- **TypeScript**
+- **Express**
+- **ClickHouse**
+- **OpenTelemetry**
+- **OpenAI Responses API**
+- **Next.js** *(UI mínima)*
+- **GitHub REST API**
+- **Docker**
 
 ---
 
-## 5. Variables y configuración relevantes
+## 📦 Cómo instalarlo
 
-### service-b
+### 1. Clonar el repositorio
 
-Scripts confirmados en `services/service-b/package.json` durante la validación del pipeline:
+```bash
+git clone https://github.com/AwZatarra/ai-debugger.git
+cd ai-debugger
+```
 
-- `dev`
-- `build`
-- `typecheck`
-- `test` no configurado en el estado validado actual
+### 2. Instalar dependencias
 
-### GitHub
+En la raíz y en los servicios que corresponda:
 
-Variables relevantes para `create-github-pr`:
+```bash
+npm install
+```
+
+> Pendiente de validación: el proyecto puede tener instalación por paquetes/servicios según la estructura actual del repo.
+
+### 3. Configurar variables de entorno
+
+Crea y ajusta tu archivo `.env` / `.env.local` según tu entorno.
+
+Variables relevantes confirmadas en el flujo del proyecto:
 
 ```env
-GITHUB_TOKEN=...
+CLICKHOUSE_URL=http://localhost:8123
+CLICKHOUSE_USER=aiuser
+CLICKHOUSE_PASSWORD=aipass123
+LOG_INGESTOR_URL=http://localhost:3010/ingest-log
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+NODE_ENV=development
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-5.4
+EMBEDDING_MODEL=text-embedding-3-small
+
+GITHUB_TOKEN=
 GITHUB_API_BASE_URL=https://api.github.com
 GITHUB_COMMITTER_NAME=AI Debugger Bot
 GITHUB_COMMITTER_EMAIL=bot@ai-debugger.local
-```
-
-### PR proposal
-
-Variables relevantes usadas por el pipeline o sus defaults:
-
-```env
 PR_PROPOSAL_DEFAULT_REPOSITORY=AwZatarra/ai-debugger
-PR_PROPOSAL_DEFAULT_TARGET_BRANCH=master
 ```
 
-> Verifica que `PR_PROPOSAL_DEFAULT_REPOSITORY` y el branch base coincidan con el repo real antes de crear proposals nuevas.
+> También debes tener configuradas las variables necesarias para OpenAI, ClickHouse y observabilidad según tu entorno local.
 
 ---
 
-## 6. Flujo operacional end-to-end
+## ▶️ Cómo arrancarlo
 
-```mermaid
-sequenceDiagram
-    participant U as Operador
-    participant A as service-a
-    participant B as service-b
-    participant D as incident-detector
-    participant C as ClickHouse
-    participant UI as UI mínima
-    participant GH as GitHub
+### 1. Levantar infraestructura
 
-    U->>A: GET /checkout
-    A->>B: GET /inventory
-    B-->>A: 200 OK o error DB_TIMEOUT
-    A-->>U: CHECKOUT_FAILED o éxito
-    B->>C: persist logs
-    A->>C: persist logs
-    U->>D: POST /detect
-    D->>C: leer logs
-    D->>C: persist incident
-    U->>UI: abrir incidente
-    UI->>D: GET /incidents/:id/context
-    UI->>D: POST /incidents/:id/analyze
-    UI->>D: POST /incidents/:id/analyze-llm
-    UI->>D: GET /incidents/:id/analysis-summary
-    UI->>D: GET /incidents/:id/similar
-    UI->>D: GET /incidents/:id/knowledge
-    UI->>D: POST /incidents/:id/pr-proposal
-    UI->>D: POST /pr-proposals/:proposalId/approve
-    UI->>D: POST /pr-proposals/:proposalId/prepare-execution
-    UI->>D: POST /pr-proposals/:proposalId/generate-file-edits
-    UI->>D: POST /pr-proposals/:proposalId/regenerate-file-edits
-    UI->>D: POST /pr-proposals/:proposalId/validate-file-edits
-    UI->>D: POST /pr-proposals/:proposalId/run-local-checks
-    UI->>D: POST /pr-proposals/:proposalId/create-github-pr
-    D->>GH: create branch + update file + open PR
-    GH-->>D: PR created
-    D-->>UI: PR URL + metadata
+Si estás usando contenedores para observabilidad y base de datos:
+
+```bash
+docker compose up -d
 ```
 
----
+### 2. Levantar servicios backend
 
-## 7. Checkpoints de validación por etapa
+Ejemplo de servicios usados en el flujo validado:
 
-| Etapa | Acción | Checkpoint de éxito | Evidencia esperada |
-|---|---|---|---|
-| 1 | Levantar `service-b` | servicio vivo | `GET /health` responde `{ "ok": true, "service": "service-b" }` |
-| 2 | Generar incidente | checkout falla o se propaga timeout | `service-a /checkout` devuelve `CHECKOUT_FAILED` con detalle de inventory |
-| 3 | Detectar incidente | incidente persistido | `POST /detect` crea incidente y aparece en UI |
-| 4 | Abrir contexto | contexto renderiza | `GET /incidents/:id/context` devuelve summary + evidence + logs |
-| 5 | RCA heurístico | análisis generado | `POST /incidents/:id/analyze` devuelve root cause y confidence |
-| 6 | RCA LLM | análisis LLM generado | `POST /incidents/:id/analyze-llm` devuelve root cause, fix y patch |
-| 7 | Similar/knowledge | enriquecimiento presente | `GET /similar` y `GET /knowledge` devuelven resultados |
-| 8 | Cause ranking | ranking disponible | endpoints de ranking responden y se puede guardar feedback |
-| 9 | PR proposal | proposal creada | status `pending_review` |
-| 10 | Review humana | propuesta aprobada o rechazada | status cambia a `approved` o `rejected` |
-| 11 | Prepare execution | plan ejecutable | status `prepared`, archivos concretos, branch sugerido |
-| 12 | Generate/regenerate edits | edits concretos | `file_edits` presentes, sin paths inválidos |
-| 13 | Validate edits | edits válidos | `valid: true` y source action correcto |
-| 14 | Run local checks | build real ejecutado | `has_real_checks: true`, `npm run build` con `ok: true` |
-| 15 | Create GitHub PR | PR abierto | `pr_created`, URL del PR y commit generado |
+- `service-a` → `http://localhost:3001`
+- `service-b` → `http://localhost:3002`
+- `incident-detector` → `http://localhost:3020`
 
----
-
-## 8. Happy path completo
-
-### 8.1 Levantar servicios
-
-#### service-b
+Ejemplo para `service-b`:
 
 ```bash
 cd services/service-b
 npm run dev
 ```
 
-Validar:
+### 3. Levantar la UI mínima
 
 ```bash
-curl http://localhost:3002/health
+cd frontend
+npm run dev
 ```
 
-Esperado:
-
-```json
-{"ok":true,"service":"service-b"}
-```
-
-#### incident-detector
-
-Arráncalo en tu forma habitual.
-
-> Pendiente de validación: comando exacto de arranque del `incident-detector` en este entorno.
-
-#### UI mínima
-
-Arráncala y abre:
-
+UI:
 ```text
 http://localhost:3000
 ```
 
 ---
 
-### 8.2 Generar el incidente de ejemplo
+## ✅ Cómo probarlo rápido
 
-Lanza varias veces:
+### 1. Verificar salud de `service-b`
+
+```bash
+curl http://localhost:3002/health
+```
+
+### 2. Generar un incidente de ejemplo
 
 ```bash
 curl http://localhost:3001/checkout
 ```
 
-Comportamiento esperado cuando el timeout ocurre:
+Cuando ocurre el fallo esperado, el flujo validado puede responder algo así:
 
 ```json
 {
@@ -269,336 +170,142 @@ Comportamiento esperado cuando el timeout ocurre:
 }
 ```
 
-> Esto es coherente con el `service-b` validado actual, que responde `500 + DB_TIMEOUT` cuando detecta timeout en `/inventory`.
-
----
-
-### 8.3 Detectar incidente
+### 3. Detectar incidente
 
 ```http
 POST http://localhost:3020/detect
 ```
 
-Validar:
-- se crea al menos un incidente,
-- aparece en la UI mínima.
+### 4. Abrir la UI mínima
 
----
+Ve a:
 
-### 8.4 Abrir detalle del incidente
-
-En la UI mínima:
-- entrar a la lista de incidentes,
-- abrir el incidente nuevo.
-
-Validar que se cargue:
-- contexto,
-- evidencia,
-- trace logs,
-- correlated errors.
-
----
-
-### 8.5 Ejecutar RCA heurístico
-
-Desde UI o API:
-
-```http
-POST /incidents/:id/analyze
+```text
+http://localhost:3000
 ```
 
-Validar:
-- root cause presente,
-- confidence,
-- suggested fix,
-- suggested patch.
+Y recorre el flujo:
+
+- incidentes
+- contexto
+- RCA heurístico
+- RCA LLM
+- PR proposal
+- approve / reject
+- prepare execution
+- generate / regenerate edits
+- validate
+- run local checks
+- create GitHub PR
 
 ---
 
-### 8.6 Ejecutar RCA con LLM
+## 📌 Estado actual
 
-```http
-POST /incidents/:id/analyze-llm
-```
+Implementado y validado en el proyecto:
 
-Validar:
-- explicación completa,
-- suggested fix,
-- suggested patch.
-
----
-
-### 8.7 Validar summary, similares y knowledge
-
-```http
-GET /incidents/:id/analysis-summary
-GET /incidents/:id/similar
-GET /incidents/:id/knowledge
-```
-
-Validar:
-- summary final disponible,
-- incidentes similares,
-- knowledge matches.
-
----
-
-### 8.8 Cause ranking + feedback
-
-Usar los endpoints de ranking y feedback ya implementados.
-
-Validar:
-- ranking persistido,
-- feedback persistido,
-- evaluation por incidente visible,
-- stats globales disponibles.
+- incident detection
+- context builder
+- RCA heurístico
+- RCA con LLM
+- analysis summary
+- similar incidents
+- knowledge retrieval
+- cause ranking determinista
+- cause ranking LLM
+- feedback humano
+- evaluación por incidente
+- stats globales
+- UI mínima
+- PR proposal con aprobación humana
+- prepare-execution
+- generate-file-edits
+- regenerate-file-edits
+- validate-file-edits
+- run-local-checks
+- create-github-pr
 
 ---
 
-### 8.9 Crear PR proposal
+## 🧱 Stack del flujo validado
 
-```http
-POST /incidents/:id/pr-proposal
-```
+### Backend
+- Node.js + TypeScript
+- Express
+- ClickHouse
+- OpenTelemetry
+- OpenAI Responses API
 
-Body ejemplo:
+### UI mínima
+- Next.js + TypeScript
 
-```json
-{
-  "repository": "AwZatarra/ai-debugger",
-  "target_branch": "master",
-  "allowlisted_paths": [
-    "services/service-b/src/",
-    "incident-detector/src/"
-  ]
-}
-```
-
-Validar:
-- proposal creada,
-- `status = pending_review`,
-- `repository` correcto,
-- `target_branch` correcto.
+### Integraciones
+- GitHub API para creación de PR real con guardrails
 
 ---
 
-### 8.10 Review humana
+## 🛡️ Guardrails
 
-#### Aprobar
+Este proyecto **no** se va directo a cambiar código sin control.
 
-```http
-POST /pr-proposals/:proposalId/approve
-```
+Antes de crear un PR real, el flujo exige:
 
-Body ejemplo:
-
-```json
-{
-  "reviewer": "pool",
-  "notes": "Aprobada para continuar con automatización posterior."
-}
-```
-
-Validar:
-- proposal pasa a `approved`,
-- `reviewed_at`, `reviewer`, `review_notes` presentes.
+- proposal estructurada
+- aprobación humana
+- prepare-execution
+- generación/regeneración de edits
+- validación contra el repo real
+- local checks
+- creación de branch y PR solo al final
 
 ---
 
-### 8.11 Prepare execution
+## 💡 Valor del proyecto
 
-```http
-POST /pr-proposals/:proposalId/prepare-execution
-```
+AI Debugger demuestra experiencia real en:
 
-Validar:
-- `ready: true`
-- acción `prepared`
-- `suggested_branch_name`
-- archivos concretos en el execution plan
+- backend engineering
+- debugging asistido por IA
+- observabilidad
+- análisis de incidentes
+- LLM workflows
+- guardrails para automatización
+- integración segura con GitHub
+- diseño de pipelines técnicos end-to-end
 
----
-
-### 8.12 Generate file edits
-
-```http
-POST /pr-proposals/:proposalId/generate-file-edits
-```
-
-Si el resultado introduce paths inválidos o archivos inexistentes, usar regeneración.
+No es solo un chatbot sobre logs.  
+Es un flujo operativo que conecta **incidente → análisis → decisión humana → PR real**.
 
 ---
 
-### 8.13 Regenerate file edits
+## 👨‍💻 Autor
 
-```http
-POST /pr-proposals/:proposalId/regenerate-file-edits
-```
+**Pool Rivera Molina**
 
-Validación esperada en el flujo ya probado:
-- edits reducidos a un archivo runtime real:
-  - `services/service-b/src/index.ts`
+- GitHub: [poolriveramolina](https://github.com/AwZatarra)
+- LinkedIn: [Pool Rivera Molina](https://www.linkedin.com/in/pool-rivera-molina/)
 
 ---
 
-### 8.14 Validate file edits
-
-```http
-POST /pr-proposals/:proposalId/validate-file-edits
-```
-
-Validar:
-- `valid: true`
-- `source_action_status: "edits_regenerated"` o el source correcto
-- sin paths inexistentes
-
----
-
-### 8.15 Run local checks
-
-```http
-POST /pr-proposals/:proposalId/run-local-checks
-```
-
-Validar:
-- `has_real_checks: true`
-- `executed_checks_count: 1`
-- `npm run build` con `ok: true`
-- `status = local_checks_passed`
-
-> El flujo validado terminó usando un workspace temporal dentro de `repoRoot/.tmp/...` y reutilizando `services/service-b/node_modules` mediante junction para que el build del workspace pudiera resolver dependencias correctamente.
-
----
-
-### 8.16 Create GitHub PR
-
-```http
-POST /pr-proposals/:proposalId/create-github-pr
-```
-
-Validar:
-- `status = pr_created`
-- PR URL presente
-- commit creado
-- branch base correcto
-- branch head correcto
-
-Resultado validado en este proyecto:
-- PR abierto correctamente sobre `AwZatarra/ai-debugger`
-- base branch: `master`
-- archivo actualizado: `services/service-b/src/index.ts`
-
----
-
-## 9. Troubleshooting por etapa
-
-### 9.1 `service-b` parece “morirse” al hacer `npm run dev`
-**Síntoma**
-- el prompt vuelve y parece que el servicio murió.
-
-**Validación**
-- probar `GET /health`
-- revisar `netstat -ano | findstr :3002`
-
-**Causa probable**
-- falsa alarma de terminal / Git Bash
-
-**Señal correcta**
-- si `/health` responde y el puerto 3002 está `LISTENING`, el servicio sigue vivo.
-
----
-
-## 10. Señales de éxito del pipeline
-
-El pipeline se considera exitoso cuando tienes evidencia de:
-
-- proposal `approved`
-- action `prepared`
-- action `edits_validated`
-- action `local_checks_passed`
-- action `pr_created`
-- URL del PR abierta en GitHub
-
----
-
-## 11. Comandos y requests de referencia
-
-### Health check
+## ⚡ Quickstart ultra corto
 
 ```bash
-curl http://localhost:3002/health
-```
+# 1. levantar infraestructura
+docker compose up -d
 
-### Generar incidente
+# 2. levantar service-b
+cd services/service-b
+npm run dev
 
-```bash
+# 3. levantar service-a, incident-detector y frontend
+# (según scripts/config actual del repo)
+
+# 4. generar incidente
 curl http://localhost:3001/checkout
+
+# 5. detectar incidente
+curl -X POST http://localhost:3020/detect
+
+# 6. operar desde la UI mínima
+# http://localhost:3000
 ```
-
-### Detectar incidente
-
-```http
-POST http://localhost:3020/detect
-```
-
-### Create PR proposal
-
-```http
-POST http://localhost:3020/incidents/:id/pr-proposal
-```
-
-### Approve
-
-```http
-POST http://localhost:3020/pr-proposals/:proposalId/approve
-```
-
-### Prepare execution
-
-```http
-POST http://localhost:3020/pr-proposals/:proposalId/prepare-execution
-```
-
-### Generate / regenerate edits
-
-```http
-POST http://localhost:3020/pr-proposals/:proposalId/generate-file-edits
-POST http://localhost:3020/pr-proposals/:proposalId/regenerate-file-edits
-```
-
-### Validate
-
-```http
-POST http://localhost:3020/pr-proposals/:proposalId/validate-file-edits
-```
-
-### Local checks
-
-```http
-POST http://localhost:3020/pr-proposals/:proposalId/run-local-checks
-```
-
-### Create GitHub PR
-
-```http
-POST http://localhost:3020/pr-proposals/:proposalId/create-github-pr
-```
-
----
-
-## 12. Notas operativas importantes
-
-- No asumas que el branch base es `main`; valida el `default_branch` real del repo.
-- No consideres un `local_checks_passed` como válido si todo quedó skipped.
-- Si el servicio no tiene test runner real, no fuerces generación de tests en el pipeline.
-- El patch validado que llegó a PR real quedó reducido a un solo archivo runtime:
-  - `services/service-b/src/index.ts`
-- El comportamiento validado actual de `service-b /inventory` sigue devolviendo:
-  - `500`
-  - `DB_TIMEOUT`
-  cuando detecta timeout, lo cual es coherente con la implementación final revisada en local.
-- El pipeline actual ya demostró crear un PR real en GitHub con guardrails y validación previa.
-
----
-
-> Recomendación final: usa este playbook como guía operativa viva. Cada vez que agregues una etapa nueva al pipeline, añade aquí su checkpoint, su endpoint y su troubleshooting asociado.
