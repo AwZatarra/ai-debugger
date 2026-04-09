@@ -51,7 +51,6 @@ El sistema recorre un flujo como este:
 - **ClickHouse**
 - **OpenTelemetry**
 - **OpenAI Responses API**
-- **Next.js** *(UI mínima)*
 - **GitHub REST API**
 - **Docker**
 
@@ -73,8 +72,6 @@ En la raíz y en los servicios que corresponda:
 ```bash
 npm install
 ```
-
-> Pendiente de validación: el proyecto puede tener instalación por paquetes/servicios según la estructura actual del repo.
 
 ### 3. Configurar variables de entorno
 
@@ -99,8 +96,6 @@ GITHUB_COMMITTER_NAME=AI Debugger Bot
 GITHUB_COMMITTER_EMAIL=bot@ai-debugger.local
 PR_PROPOSAL_DEFAULT_REPOSITORY=AwZatarra/ai-debugger
 ```
-
-> También debes tener configuradas las variables necesarias para OpenAI, ClickHouse y observabilidad según tu entorno local.
 
 ---
 
@@ -127,18 +122,6 @@ Ejemplo para `service-b`:
 ```bash
 cd services/service-b
 npm run dev
-```
-
-### 3. Levantar la UI mínima
-
-```bash
-cd frontend
-npm run dev
-```
-
-UI:
-```text
-http://localhost:3000
 ```
 
 ---
@@ -175,28 +158,6 @@ Cuando ocurre el fallo esperado, el flujo validado puede responder algo así:
 ```http
 POST http://localhost:3020/detect
 ```
-
-### 4. Abrir la UI mínima
-
-Ve a:
-
-```text
-http://localhost:3000
-```
-
-Y recorre el flujo:
-
-- incidentes
-- contexto
-- RCA heurístico
-- RCA LLM
-- PR proposal
-- approve / reject
-- prepare execution
-- generate / regenerate edits
-- validate
-- run local checks
-- create GitHub PR
 
 ---
 
@@ -235,9 +196,6 @@ Implementado y validado en el proyecto:
 - ClickHouse
 - OpenTelemetry
 - OpenAI Responses API
-
-### UI mínima
-- Next.js + TypeScript
 
 ### Integraciones
 - GitHub API para creación de PR real con guardrails
