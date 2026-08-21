@@ -1,49 +1,49 @@
 # 🧠 AI Debugger
 
-Backend que funciona como un **debugger inteligente para incidentes de producción**.
+Backend that works as an **intelligent debugger for production incidents**.
 
-Permite detectar incidentes, construir contexto automáticamente, analizar causa raíz con reglas y LLMs, buscar incidentes similares, recuperar conocimiento útil y llegar hasta una **propuesta de PR con aprobación humana**.  
-En el flujo ya validado, incluso puede terminar creando un **Pull Request real en GitHub** con guardrails.
+It can detect incidents, automatically build context, analyze root causes using rules and LLMs, search for similar incidents, retrieve useful knowledge, and go all the way to a **PR proposal with human approval**.  
+In the already validated flow, it can even end up creating a **real Pull Request on GitHub** with guardrails.
 
-En pocas palabras: este proyecto busca que el debugging en producción sea **más rápido, más guiado y menos dependiente de revisión manual desde cero**.
-
----
-
-## 🚀 Qué hace
-
-El sistema recorre un flujo como este:
-
-- ingiere logs y errores de servicios
-- detecta incidentes automáticamente
-- construye contexto técnico del incidente
-- ejecuta RCA heurístico
-- ejecuta RCA con LLM
-- busca incidentes similares
-- recupera conocimiento y runbooks relacionados
-- rankea causas probables
-- permite feedback humano
-- genera una PR proposal
-- exige aprobación humana antes de continuar
-- valida edits y checks locales
-- puede abrir un **PR real en GitHub**
+In short: this project aims to make production debugging **faster, more guided, and less dependent on starting manual reviews from scratch**.
 
 ---
 
-## ✨ Diferencial técnico
+## 🚀 What it does
 
-- mezcla **reglas deterministas + LLM**
-- incorpora **human-in-the-loop**
-- usa **guardrails** antes de tocar GitHub
-- separa claramente:
-  - análisis
+The system follows a flow like this:
+
+- ingests service logs and errors
+- automatically detects incidents
+- builds technical context for the incident
+- runs heuristic RCA
+- runs RCA with an LLM
+- searches for similar incidents
+- retrieves related knowledge and runbooks
+- ranks probable causes
+- allows human feedback
+- generates a PR proposal
+- requires human approval before continuing
+- validates edits and local checks
+- can open a **real PR on GitHub**
+
+---
+
+## ✨ Technical differentiators
+
+- combines **deterministic rules + LLM**
+- incorporates **human-in-the-loop**
+- uses **guardrails** before interacting with GitHub
+- clearly separates:
+  - analysis
   - proposal
-  - validación
-  - ejecución
-- deja trazabilidad del pipeline completo
+  - validation
+  - execution
+- provides traceability across the entire pipeline
 
 ---
 
-## 🛠️ Tecnologías
+## 🛠️ Technologies
 
 - **Node.js**
 - **TypeScript**
@@ -56,28 +56,28 @@ El sistema recorre un flujo como este:
 
 ---
 
-## 📦 Cómo instalarlo
+## 📦 How to install it
 
-### 1. Clonar el repositorio
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/AwZatarra/ai-debugger.git
 cd ai-debugger
 ```
 
-### 2. Instalar dependencias
+### 2. Install dependencies
 
-En la raíz y en los servicios que corresponda:
+At the root and in the corresponding services:
 
 ```bash
 npm install
 ```
 
-### 3. Configurar variables de entorno
+### 3. Configure environment variables
 
-Crea y ajusta tu archivo `.env` / `.env.local` según tu entorno.
+Create and adjust your `.env` / `.env.local` file according to your environment.
 
-Variables relevantes confirmadas en el flujo del proyecto:
+Relevant variables confirmed in the project flow:
 
 ```env
 CLICKHOUSE_URL=http://localhost:8123
@@ -99,25 +99,25 @@ PR_PROPOSAL_DEFAULT_REPOSITORY=AwZatarra/ai-debugger
 
 ---
 
-## ▶️ Cómo arrancarlo
+## ▶️ How to run it
 
-### 1. Levantar infraestructura
+### 1. Start the infrastructure
 
-Si estás usando contenedores para observabilidad y base de datos:
+If you are using containers for observability and the database:
 
 ```bash
 docker compose up -d
 ```
 
-### 2. Levantar servicios backend
+### 2. Start the backend services
 
-Ejemplo de servicios usados en el flujo validado:
+Example services used in the validated flow:
 
 - `service-a` → `http://localhost:3001`
 - `service-b` → `http://localhost:3002`
 - `incident-detector` → `http://localhost:3020`
 
-Ejemplo para `service-b`:
+Example for `service-b`:
 
 ```bash
 cd services/service-b
@@ -126,21 +126,21 @@ npm run dev
 
 ---
 
-## ✅ Cómo probarlo rápido
+## ✅ How to test it quickly
 
-### 1. Verificar salud de `service-b`
+### 1. Check `service-b` health
 
 ```bash
 curl http://localhost:3002/health
 ```
 
-### 2. Generar un incidente de ejemplo
+### 2. Generate a sample incident
 
 ```bash
 curl http://localhost:3001/checkout
 ```
 
-Cuando ocurre el fallo esperado, el flujo validado puede responder algo así:
+When the expected failure occurs, the validated flow may return something like:
 
 ```json
 {
@@ -153,7 +153,7 @@ Cuando ocurre el fallo esperado, el flujo validado puede responder algo así:
 }
 ```
 
-### 3. Detectar incidente
+### 3. Detect the incident
 
 ```http
 POST http://localhost:3020/detect
@@ -161,24 +161,24 @@ POST http://localhost:3020/detect
 
 ---
 
-## 📌 Estado actual
+## 📌 Current status
 
-Implementado y validado en el proyecto:
+Implemented and validated in the project:
 
 - incident detection
 - context builder
-- RCA heurístico
-- RCA con LLM
+- heuristic RCA
+- RCA with LLM
 - analysis summary
 - similar incidents
 - knowledge retrieval
-- cause ranking determinista
-- cause ranking LLM
-- feedback humano
-- evaluación por incidente
-- stats globales
-- UI mínima
-- PR proposal con aprobación humana
+- deterministic cause ranking
+- LLM cause ranking
+- human feedback
+- per-incident evaluation
+- global stats
+- minimal UI
+- PR proposal with human approval
 - prepare-execution
 - generate-file-edits
 - regenerate-file-edits
@@ -188,7 +188,7 @@ Implementado y validado en el proyecto:
 
 ---
 
-## 🧱 Stack del flujo validado
+## 🧱 Validated flow stack
 
 ### Backend
 - Node.js + TypeScript
@@ -197,46 +197,46 @@ Implementado y validado en el proyecto:
 - OpenTelemetry
 - OpenAI Responses API
 
-### Integraciones
-- GitHub API para creación de PR real con guardrails
+### Integrations
+- GitHub API for real PR creation with guardrails
 
 ---
 
 ## 🛡️ Guardrails
 
-Este proyecto **no** se va directo a cambiar código sin control.
+This project does **not** directly modify code without control.
 
-Antes de crear un PR real, el flujo exige:
+Before creating a real PR, the flow requires:
 
-- proposal estructurada
-- aprobación humana
+- structured proposal
+- human approval
 - prepare-execution
-- generación/regeneración de edits
-- validación contra el repo real
+- edit generation/regeneration
+- validation against the real repository
 - local checks
-- creación de branch y PR solo al final
+- branch and PR creation only at the end
 
 ---
 
-## 💡 Valor del proyecto
+## 💡 Project value
 
-AI Debugger demuestra experiencia real en:
+AI Debugger demonstrates real experience in:
 
 - backend engineering
-- debugging asistido por IA
-- observabilidad
-- análisis de incidentes
+- AI-assisted debugging
+- observability
+- incident analysis
 - LLM workflows
-- guardrails para automatización
-- integración segura con GitHub
-- diseño de pipelines técnicos end-to-end
+- guardrails for automation
+- secure GitHub integration
+- end-to-end technical pipeline design
 
-No es solo un chatbot sobre logs.  
-Es un flujo operativo que conecta **incidente → análisis → decisión humana → PR real**.
+It is not just a chatbot for logs.  
+It is an operational flow that connects **incident → analysis → human decision → real PR**.
 
 ---
 
-## 👨‍💻 Autor
+## 👨‍💻 Author
 
 **Pool Rivera Molina**
 
@@ -245,25 +245,25 @@ Es un flujo operativo que conecta **incidente → análisis → decisión humana
 
 ---
 
-## ⚡ Quickstart ultra corto
+## ⚡ Ultra-short quickstart
 
 ```bash
-# 1. levantar infraestructura
+# 1. start infrastructure
 docker compose up -d
 
-# 2. levantar service-b
+# 2. start service-b
 cd services/service-b
 npm run dev
 
-# 3. levantar service-a, incident-detector y frontend
-# (según scripts/config actual del repo)
+# 3. start service-a, incident-detector, and frontend
+# (according to the repo's current scripts/config)
 
-# 4. generar incidente
+# 4. generate incident
 curl http://localhost:3001/checkout
 
-# 5. detectar incidente
+# 5. detect incident
 curl -X POST http://localhost:3020/detect
 
-# 6. operar desde la UI mínima
+# 6. operate from the minimal UI
 # http://localhost:3000
 ```
